@@ -1,0 +1,76 @@
+import React, { useState, useEffect } from 'react';
+import { SafeAreaView, View, TextInput, Button, FlatList, Text, Image, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
+import axios from 'axios';
+
+const API_BASE = 'https://YOUR_BACKEND_URL.com'; // replace after backend deployed
+
+export default function App() {
+  const [q, setQ] = useState('');
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  async function searchProducts(term='') {
+    try {
+      setLoading(true);
+      const res = await axios.get(`${API_BASE}/api/search`, { params: { q: term }});
+      setResults(res.data.results || []);
+    } catch (e) {
+      console.error(e);
+      alert('Search failed');
+    } finally { setLoading(false); }
+  }
+
+  useEffect(() => { searchProducts(); }, []);
+
+  async function handleBuy(productId) {
+    try {
+      const res = await axios.post(`${API_BASE}/api/click`, { productId });
+      if (res.data && res.data.url) {
+        // Open affiliate URL in external browser
+        Linking.openURL(res.data.url);
+      } else {
+        alert('Redirect URL not found');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Buy failed');
+    }
+  }
+
+  return (
+    <SafeAreaView style={{flex:1, padding:12}}>
+      <Text style={{fontSize:22, fontWeight:'700', marginBottom:8}}>Simply Shopping — Best Deals</Text>
+
+      <View style={{flexDirection:'row', marginBottom:8}}>
+        <TextInput
+          value={q}
+          onChangeText={setQ}
+          placeholder="Search (example: mobile, TV) — Search karo..."
+          style={{flex:1, borderWidth:1, padding:8, borderRadius:6}}
+        />
+        <Button title="Search" onPress={() => searchProducts(q)} />
+      </View>
+
+      {loading ? <ActivityIndicator size="large" /> : null}
+
+      <FlatList
+        data={results}
+        keyExtractor={(item)=>item.id}
+        renderItem={({item}) => (
+          <View style={{flexDirection:'row', padding:8, borderBottomWidth:0.5, alignItems:'center'}}>
+            <Image source={{uri: item.image_url || 'https://via.placeholder.com/120'}} style={{width:80, height:80, borderRadius:6, marginRight:8}} />
+            <View style={{flex:1}}>
+              <Text style={{fontWeight:'700'}}>{item.title}</Text>
+              <Text style={{color:'#666'}}>{item.store} • ₹{item.price}</Text>
+              <View style={{flexDirection:'row', marginTop:8}}>
+                <TouchableOpacity onPress={()=>handleBuy(item.id)} style={{backgroundColor:'#f59e0b', paddingHorizontal:12, paddingVertical:8, borderRadius:6}}>
+                  <Text style={{color:'#fff'}}>Buy — खरीदें</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+      />
+    </SafeAreaView>
+  );
+}
